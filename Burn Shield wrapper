@@ -1,0 +1,94 @@
+#include <iostream>
+#include <vector>
+#include <cstring>
+#include <sys/mman.h> // Required for mlock/munlock (Linux/Unix)
+
+// A secure container that destroys its data immediately upon usage or destruction
+class BurnShieldKey {
+private:
+    std::vector<unsigned char> data;
+    bool is_burned;
+
+    // Securely erase memory using volatile to prevent compiler optimization bypass
+    void burn() {
+        if (!is_burned && !data.empty()) {
+            volatile unsigned char* p = data.data();
+            size_t size = data.size();
+            while (size--) {
+                *p++ = 0;
+            }
+            munlock(data.data(), data.size());
+            is_burned = true;
+            std::cout << "[SHIELD] Core successfully burned and zeroized from RAM.\n";
+        }
+    }
+
+public:
+    // Constructor: Securely instantiates and locks the memory space
+    BurnShieldKey(const std::vector<unsigned char>& raw_key) : data(raw_key), is_burned(false) {
+        if (mlock(data.data(), data.size()) != 0) {
+            std::cerr << "[WARNING] Failed to lock memory page. Key vulnerable to swap disk leaks.\n";
+        } else {
+            std::cout << "[SHIELD] Memory page locked in RAM.\n";
+        }
+    }
+
+    // Destructor: Fallback to ensure the key is always burned if the object goes out of scope
+    ~BurnShieldKey() {
+        burn();
+    }
+
+    // The "Burn-on-Read" mechanism
+    // Accessing the data extracts it, executes the operation, and immediately wipes it.
+    std::vector<unsigned char> burnAndUse() {
+        if (is_burned) {
+            throw std::runtime_error("CRITICAL: Attempted to read a key that has already been burned!");
+        }
+        
+        // Make a temporary copy to return, then immediately burn the master source
+        std::vector<unsigned char> temp_copy = data;
+        burn(); 
+        
+        return temp_copy; // Hand over the data to the crypto operation
+    }
+
+    bool isBurned() const { return is_burned; }
+};
+
+int main() {
+    // 1. Initialize a highly sensitive 256-bit cryptographic key
+    std::vector<unsigned char> mySecretKey = {
+        0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08,
+        0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+        0x17, 0x18, 0x19, 0x20, 0x21, 0x22, 0x23, 0x24,
+        0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32
+    };
+
+    std::cout << "--- Initializing Shielded Key Storage ---\n";
+    BurnShieldKey shieldedKey(mySecretKey);
+
+    // 2. Consume the key for a cryptographic operation (e.g., signing a transaction)
+    std::cout << "\n--- Consuming Key for One-Time Crypto Operation ---\n";
+    try {
+        std::vector<unsigned char> keyToUse = shieldedKey.burnAndUse();
+        std::cout << "[EXECUTE] Performing cryptographic operation with active key...\n";
+        
+        // Always clean up the temporary operational copy as well
+        volatile unsigned char* op_ptr = keyToUse.data();
+        size_t op_size = keyToUse.size();
+        while (op_size--) { *op_ptr++ = 0; }
+        
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
+
+    // 3. Attempting to reuse the key will now fail completely, preventing memory sniffing attacks
+    std::cout << "\n--- Attempting Malicious Key Reuse ---\n";
+    try {
+        std::vector<unsigned char> stolenAttempt = shieldedKey.burnAndUse();
+    } catch (const std::exception& e) {
+        std::cout << "[BLOCKED] " << e.what() << "\n";
+    }
+
+    return 0;
+}
