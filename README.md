@@ -1,4 +1,6 @@
 # token-burn-shield
+<img width="1024" height="559" alt="image_553a644b-d2d6-4086-bc26-09b8baadebe7" src="https://github.com/user-attachments/assets/bc1b7683-0351-422d-8be4-76dd752ceb76" />
+
 Secure "Burn to Shield" Implementation in C++
 
 Secure Cryptographic Memory Shield in C++
@@ -19,6 +21,7 @@ bool constantTimeCompare(const unsigned char* a, const unsigned char* b, size_t 
     }
     return result == 0;
 }
+<img width="1024" height="559" alt="image_5258e14b-a0f0-40f7-b9fb-087c10828d58" src="https://github.com/user-attachments/assets/8a5fc8c1-14bb-49f3-ab5c-d42ccfdfddc6" />
 
 int main() {
     // Simulated 32-byte (256-bit) crypto key
@@ -59,3 +62,4 @@ int main() {
     std::cout << "Memory securely zeroed and unlocked." << std::endl;
     return 0;
 }
+<img width="1024" height="559" alt="image_755bcccd-6930-40b5-b777-a233c4a4a139" src="https://github.com/user-attachments/assets/7e267887-d3e4-453e-aede-53efaca671be" />
